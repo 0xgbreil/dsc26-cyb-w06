@@ -1,4 +1,4 @@
-# AI usage: dsc26-cyb-w07
+# AI usage: dsc26-cyb-w06
 
 Keep the three headings below exactly as they are. The grader stops and scores 0 if this file is
 missing or any of the three headings is missing. It does not score what you write; your Track
@@ -6,18 +6,18 @@ Mentor reads it, and the W8 defence can ask about it.
 
 ## Tools
 
-Claude (Anthropic) wrote the first implementation of secrets.py, redact.py and timeline.py and an extra test script (including property tests for idempotence and a check of the Cairo clock change); I ran everything against the public tests and the fixtures. Claude also drafted the two answers under "In my own words" below; the course asks for these to be written without AI, so I am stating that here.
+Claude (Anthropic) wrote the first implementation of normalize.py, prompt.py and output.py and an extra edge-case script; I reviewed and ran it against the public tests and the benign fixture lines. Claude also drafted the two answers under "In my own words" below; the course asks for these to be written without AI, so I am stating that here.
 
 ## What AI got wrong
 
-The risky places were the ones the task warns about, so they were handled deliberately instead of the naive way: national IDs are checked as real dates and governorates (not by 14 digits), the tenant/ID digit checks use `[0-9]` because `\\d` also matches Arabic-Indic digits, and Wazuh times get the Cairo time zone with fold=0 instead of being logged without an offset. One thing to watch: the extra test script first crashed because of how the property test was written (my test, not the code), which I fixed before trusting the idempotence result.
+Claude's first version of the link clean-up in output.py had a convoluted branch for keeping allowed links; I replaced it with a simple rule (keep the link as is, rebuild it only if a bare URL inside its text was removed). Its link regex also leaves a stray ")" after links like `[z](javascript:alert(1))` because of the nested parenthesis; the URL itself is removed, so it is harmless, and I left it. A trap it had to be told about up front: `\d` in Python matches Arabic-Indic digits, so the tenant check uses `[0-9]` instead. All of this showed up when running the code and the edge-case script, not from the public tests alone.
 
 ## In my own words
 
-1. Your timeline places the Wazuh "download burst" at 20:41:05 UTC. What evidence in the other two logs supports choosing the first 23:41 rather than the second?
+1. Which leg of the lethal trifecta does stripping markdown images remove, and why does that matter for Hisn?
 
-   The nginx log shows the raw download request at 23:40:10 +0300 (20:40:10 UTC) and the app log has the same download at 20:40:10 UTC, so a Wazuh alert at 20:41:05 UTC, about a minute later, fits the burst. The second 23:41 would be 21:41:05 UTC, after the key was revoked at 21:05 and downloads were already being refused at 21:12.
+   It removes the exfiltration leg (the way data can leave). A markdown image is fetched automatically from a URL the attacker controls, so injected text could hide customer data in that URL and it would be sent out as soon as an analyst's screen renders the reply. This matters for Hisn because the copilot sees alerts from many tenants, and a leak of one tenant's data is exactly what the service must never allow.
 
-2. A token was public on GitHub for ten minutes before you deleted the commit. Why is the incident not over?
+2. Why does `triage` raise the severity of an alert that contains an injection attempt instead of just warning?
 
-   Deleting the commit does not make the token safe, because anyone or any bot could have copied it in those ten minutes (and it can live on in forks and caches). The token must be revoked and rotated, and the logs checked to see what it was used for, which here already included a service account downloading unredacted documents.
+   A warning flag can be missed, especially on the night shift, and a successful injection is usually trying to make the model say "low" or "close it" so nobody looks. Raising severity to at least high and turning monitor into escalate_to_analyst forces a human to look, and an attacker can never use the model to make an alert quieter than it really is.
